@@ -1,0 +1,217 @@
+---
+title: "Homework 7"
+author: "Donghwan Won"
+date: "`r Sys.Date()`"
+output: html_document
+---
+**EID:** dw34446
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+armfold <- read.csv('C:/Users/namyu/OneDrive/바탕 화면/SDS315/HW7/armfold.csv')
+turnout <- read.csv('C:/Users/namyu/OneDrive/바탕 화면/SDS315/HW7/turnout.csv')
+library(tidyverse)
+library(mosaic)
+library(MatchIt)
+
+
+```
+
+## A
+
+```{r}
+count_male <- armfold %>%
+  summarise(Count = sum(Sex == 'Male'))
+count_male
+
+count_female <- armfold %>%
+  summarise(Count = sum(Sex == 'Female'))
+count_female
+
+left_male <- armfold %>%
+  summarise(Count = sum(Sex == 'Male' & LonR_fold == '1'))
+
+left_female <- armfold %>%
+  summarise(Count = sum(Sex == 'Female' & LonR_fold == '1'))
+
+
+prop_male <- left_male/count_male
+round(prop_male,4)
+prop_female <- left_female/count_female
+round(prop_female,4)
+
+```
+Number of Male is 106, and number of female is 111. Sample proportion of males who folded their left arm on top is 0.4717, and sample proportion of females who folded their left arm on top is 0.4234.
+
+## B
+```{r}
+prop_diff <- prop_male - prop_female
+round(prop_diff, 4)
+
+```
+Observed difference in proportions between the two groups is 0.0483.
+
+## C
+```{r}
+boot_armfold = do(10000)*diffprop(LonR_fold ~ Sex, data=mosaic::resample(armfold))
+confint(boot_armfold)
+
+std_err_diff = sqrt((0.4717 * (1-0.4717) / 106) + (0.4234 * (1-0.4234) / 111)
+)
+round(std_err_diff,4)
+
+0.0483 + 1.96*std_err_diff
+0.0483 - 1.96*std_err_diff
+
+```
+Lower bound is -0.0827 and upper bound is 0.1815. Standard error would be 0.0675. 
+
+## D
+If we were to repeatedly take random samples from this population and compute confidence intervals for the difference in proportions, then we would expect that we are 95% confident that the true difference in proportions lies between –0.0827 and 0.1815.”.
+
+## E.
+The standard error of 0.0675 tells us how much the difference in the proportion of males and females who fold their arms with the left arm on top is likely to vary if we repeated the experiment many times.
+
+## F.
+Sampling distribution in this context explain the distribution of the difference in sample proportions (males minus females folding left arm on top) that we would get when we repeatedly took random samples from the population of students at Australian university.
+The difference in proportion will be vary from sample to sample. The true population proportions of males and females who fold their arms with the left arm on top will be fixed.
+
+## G.
+The Central Limit Theorem (CLT) justifies using a normal distribution to approximate the sampling distribution of the difference in sample proportions. In this case, we are comparing two sample proportions which are the proportion of males and the proportion of females who folded their left arm on top. When we repeat this over and over, CLT will tell us that variation will be in normal shape as long as the sample size is large enough.
+
+## H.
+Interval is [-0.01, 0.3]. Since the interval includes zero, there is no significant difference in arm folding between males and females.Therefore, claim is not strongly supported.
+
+## I.
+Confidence interval would be difference each time.Because each random sample will probably produce slightly different sample proportions for males and females folding their arms.
+
+## 2.A
+```{r}
+prop(voted1998 ~ GOTV_call, data=turnout)
+boot_1998 = do(10000)*diffprop(voted1998 ~ GOTV_call, data=mosaic::resample(turnout))
+confint(boot_1998)
+
+```
+
+The proportion of people who received a GOTV call and voted in 1996 is 0.6478. 
+Proportion of people who did not received a GOTV call and voted in 1998 is 0.4442.
+We are 95% confident that difference in voter turnout between those who received a GOTV call and those who didn’t is between 14.2 and 26.2 percentage. 
+
+## 2.B
+```{r}
+voted_summary = turnout %>%
+  group_by(GOTV_call) %>%
+  summarize(voted_1996 = mean(voted1996), Age = mean(AGE), Major = mean(MAJORPTY))
+voted_summary
+
+```
+Among people who received a GOTV call, 71.3% had voted in 1996. But only 53.1% of people who received a GOTV call voted. The average age in the received GOTV group was 58.3, and average age in the not received GOTV group was 49.4. Lastly, 80.2% of the GOTV group belonged to a major political party compared to 74.5% in the non-GOTV group. 
+
+## voted 1996 confounder
+```{r}
+ggplot(turnout) +
+  geom_bar(aes(x=voted1996)) +
+  facet_wrap(~GOTV_call) +
+  labs(title = "Voting in 1996 by GOTV Call Status")
+
+
+confi_voted1996 <- prop.test(voted1996 ~GOTV_call, data = turnout)
+confint(confi_voted1996)
+```
+Among people who received a GOTV call, 46.9% had voted in 1996, compared to 28.7% of those who did not. The difference in proportions is 18.2%, with a 95% confidence interval of [12.2%, 24.1%], which is also a statistically significant difference.
+
+
+## AGE confounder
+```{r}
+ggplot(turnout) +
+  geom_histogram(aes(x=AGE, y=after_stat(density)), bins=30) +
+  facet_wrap(~GOTV_call) +
+  labs(title = "Average Age Distribution by GOTV Call Status")
+
+confi_AGE <- t.test(AGE ~GOTV_call, data = turnout)
+confint(confi_AGE)
+
+```
+
+The average age of people who received a GOTV call is 58.31, while the average age in the group that did not receive a call is 49.43. The difference in mean age is statistically significant, with a 95% confidence interval of [-11.40, -6.37]. This shows that older individuals were more likely to be contacted. Since age is also likely related to likelihood of voting.
+
+## Major party confounder
+```{r}
+ggplot(turnout) +
+  geom_bar(aes(x=MAJORPTY)) +
+  facet_wrap(~GOTV_call) +
+  labs(title = "Political Party Affiliation by GOTV Call Status")
+
+
+confi_major <- prop.test(MAJORPTY ~GOTV_call, data = turnout)
+confint(confi_major)
+
+```
+Among people who received a GOTV call, 25.5% were affiliated with the major political party, compared to 19.8% of those who did not receive a call. The difference in proportions is a 95% confidence interval of [0.004, 0.109], which is also a statistically significant.
+
+## 2.C
+```{r}
+turnout_match = matchit(GOTV_call ~ voted1998 + voted1996 + AGE + MAJORPTY, data = turnout, ratio=5)
+turnout_match = match.data(turnout_match)
+
+voted_summary1 = turnout_match %>%
+  group_by(GOTV_call) %>%
+  summarize(voted_1996 = mean(voted1996), Age = mean(AGE), Major = mean(MAJORPTY))
+voted_summary1
+
+
+```
+The differences in means across the groups are small and not statistically significant, indicating that the confounding has been successfully controlled. 
+
+## Voted 1996
+```{r}
+ggplot(turnout_match) +
+  geom_bar(aes(x=voted1996)) +
+  facet_wrap(~GOTV_call) +
+  labs(title = "Voting in 1996 by GOTV Call Status after Matched")
+
+confi_voted1996_2 <- prop.test(voted1996 ~GOTV_call, data = turnout_match)
+confint(confi_voted1996_2)
+
+```
+After matching, the proportion of people who received a GOTV call and voted in 1998 was 28.0971%, while the proportion of no GOTV call who voted was 28.7445%.
+The 95% confidence interval for the difference in proportion is [−0.0706, 0.0577].
+Because the confidence interval includes 0, this suggests that this is not statistically significant evidence of a difference in voting behavior due to the GOTV call.
+
+## Age
+```{r}
+ggplot(turnout_match) +
+  geom_histogram(aes(x=AGE, y=after_stat(density)), bins=30) +
+  facet_wrap(~GOTV_call) +
+  labs(title = "Average Age Distribution by GOTV Call Status after Matched ")
+
+confi_AGE_2 <- t.test(AGE ~GOTV_call, data = turnout_match)
+confint(confi_AGE_2)
+
+```
+After matching, the mean age of people who did not receive a GOTV call was 58.11, while the mean age of those who did receive a call was 58.31.
+The 95% confidence interval for the difference in mean age is [−2.9181, 2.5229].
+Since this interval includes 0, we conclude that there is no statistically significant difference in age.
+
+## Major Party
+```{r}
+ggplot(turnout_match) +
+  geom_bar(aes(x=MAJORPTY)) +
+  facet_wrap(~GOTV_call) +
+  labs(title = "Political Party Affiliation by GOTV Call Status after match")
+
+confi_major_2 <- prop.test(MAJORPTY ~GOTV_call, data = turnout_match)
+confint(confi_major_2)
+
+```
+
+After matching, the proportion of people who received a GOTV call and voted in 1996 was 0.1838, while the proportion of those who did not receive a GOTV call and voted in 1998 was 0.1984. The 95% confidence interval for the difference in these proportions is [−0.0712, 0.0421]. Since this interval includes 0, we conclude that there is no statistically significant difference.
+
+## Conclusion
+
+There is no strong evidence that the GOTV call caused an increase in voting in 1998, because confounding variables such as voted 1996, age and major party.The effect of the GOTV call is small and not statistically significant.
+
+
+
+
